@@ -127,6 +127,7 @@ export default function Timeline() {
   const [zoomLevel, setZoomLevel] = useState('DAY');
   const [dateBlocks, setDateBlocks] = useState([]);
   const tableContainerRef = useRef(null);
+  const calendarRef = useRef(null);
 
  const columnConfig = useMemo(function getColumnConfig() 
  {  
@@ -486,7 +487,8 @@ switch (zoomLevel) {
               </tbody>
             </div>
             <div
-              className='table-data-wrapper right'
+              className='table-data-wrapper'
+              ref={calendarRef}
               style={{ height: `${data.length * 60 + 80}px` }}
             >
               <thead className='sticky-header'>
@@ -541,6 +543,7 @@ switch (zoomLevel) {
                         index={row.index}
                         zoomValue={zoomLevel}
                         startDate={() => getStartDate()}
+                        calendarRef={calendarRef}
                       />
                       <tr
                         key={`${row.id} ${uuid()}`}

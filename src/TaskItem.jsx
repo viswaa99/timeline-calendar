@@ -16,14 +16,26 @@ const initialTasks = [
   { id: 3, name: 'Task 3', start: '2024-07-24', end: '2024-08-02' },
 ];
 
+const THRESHOLD = 50;
+
 const hrConv = 60 * 60 * 1000;
 const dayConv = 24 * 60 * 60 * 1000;
 const timeUnit = 100;
-export default function TaskItem({data , index , startDate, zoomValue}) {
+export default function TaskItem({data , index , startDate, zoomValue, calendarRef}) {
   console.log(data,"TaskData")
+  const taskRef = useRef({});
   const [task, setTask] = useState(data);
   const [zoom, setZoom] = useState(ZOOM_LEVELS_CONVERSION[zoomValue].id || 'Day');
 
+// console.log(
+//   calendarRef.current?.scrollLeft,
+//   calendarRef.current?.clientWidth,
+//   taskRef.current.offsetWidth,
+//   parseFloat(
+//     taskRef.current.style?.transform?.match(/translateX\(([-\d.]+)px\)/)[1]
+//   ),
+//   'calendarRef'
+// );
   // console.log(ZOOM_LEVELS_CONVERSION[zoomValue],"ZMM");
   // const [startDate, setSt] = useState('2024-06-20');
   const [endDate, setEt] = useState('2024-06-09');
@@ -84,12 +96,35 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
     currentTaskRef.current = task;
     const onMouseMove = (moveEvent) => {
       console.log(moveEvent.offsetX, 'MV');
-       const elementWidth = element.offsetWidth;
-       if (elementWidth > threshold) {
-         task.hideChild = false;
-       } else {
-         task.hideChild = true;
-       }
+      //scrolllogic
+      const scrollable = calendarRef.current;
+      const scrollLeft = scrollable.scrollLeft;
+      const scrollRight = scrollLeft + scrollable.clientWidth;
+      const elementLeft = parseFloat(
+        taskRef.current.style?.transform?.match(/translateX\(([-\d.]+)px\)/)[1]
+      );
+      const elementWidth = taskRef.current.offsetWidth;
+      console.log(elementWidth, elementLeft, scrollLeft, scrollRight, 'ELW');
+      console.log(scrollRight - (elementWidth + elementLeft), 'ELW');
+
+      if (elementLeft - scrollLeft < 50) {
+        scrollable.scrollTo({
+          left: scrollLeft - 150,
+          behavior: 'smooth',
+        });
+      }
+      if (scrollRight - (elementWidth + elementLeft) < 50) {
+        scrollable.scrollTo({
+          left: scrollLeft + 150,
+          behavior: 'smooth',
+        });
+      }
+      //scrolllogic
+      if (elementWidth > threshold) {
+        task.hideChild = false;
+      } else {
+        task.hideChild = true;
+      }
       if (direction === 'right') {
         // const newWidth = startWidth + (moveEvent.clientX - startX);
         const diff = moveEvent.clientX - startX;
@@ -104,7 +139,7 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
         task._start_date = new Date(startTime).toISOString();
       }
       currentTaskRef.current = task;
-      setTask({...task});
+      setTask({ ...task });
     };
 
     const onMouseUp = () => {
@@ -138,6 +173,28 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
     const taskEndDate = new Date(task.end);
     currentTaskRef.current = task;
     const onMouseMove = (moveEvent) => {
+       const scrollable = calendarRef.current;
+       const scrollLeft = scrollable.scrollLeft;
+       const scrollRight = scrollLeft + scrollable.clientWidth;
+const elementLeft = parseFloat(
+  taskRef.current.style?.transform?.match(/translateX\(([-\d.]+)px\)/)[1]
+);
+const elementWidth = taskRef.current.offsetWidth;
+      console.log(elementWidth,elementLeft,scrollLeft,scrollRight,"ELW");
+      console.log(scrollRight - (elementWidth + elementLeft),"ELW")
+
+      if(elementLeft - scrollLeft < 50){
+        scrollable.scrollTo({
+          left: scrollLeft - 150,
+          behavior: 'smooth',
+        });
+      }
+      if(scrollRight - (elementWidth + elementLeft) < 50){
+        scrollable.scrollTo({
+          left: scrollLeft + 150,
+          behavior: 'smooth',
+        });
+      }
       const diff = moveEvent.clientX - startX;
       const startTime =
         moment(timestampStart).utc().valueOf() + convertDistToTime(diff);
@@ -187,6 +244,7 @@ console.log(timeDiff,width,"Good")
         <div
           className='task'
           key={task._id}
+          ref={taskRef}
           style={{
             transform: `translateX(${timeDiff}px)`,
             width: `${width}px`,
