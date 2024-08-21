@@ -10,8 +10,23 @@ import holidayData from './holidays.json';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import './layoutcheck.css';
 import {v4 as uuid} from 'uuid';
-import { makeData, FIELDS, utcToMs } from './util';
+import {
+  makeData,
+  FIELDS,
+  utcToMs,
+  ZOOM_LEVELS_CONVERSION,
+  getDaysInMonth,
+  getDaysInQuarter,
+} from './util';
 import TaskItem from './TaskItem';
+
+const PER_DAY_SIZE_MONTH = 3.53;
+
+const PER_DAY_SIZE_QUARTER = 0.94;
+
+const PER_DAY_SIZE_YEAR = 0.294;
+
+const DAY_BASED = ['MONTH','QUARTER'];
 
 const ZOOM_LEVELS = {
   HOUR: {
@@ -35,11 +50,11 @@ const ZOOM_LEVELS = {
     startDate: moment()
       .utc()
       .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-      .subtract(2, 'month'),
+      .subtract(3, 'month'),
     endDate: moment()
       .utc()
       .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-      .add(2, 'month'),
+      .add(3, 'month'),
     format: (date) =>
       `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}`,
   },
@@ -103,9 +118,9 @@ const ZOOM_LEVELS = {
 };
 
 const NON_HOLIDAY_MODES = [
-  ZOOM_LEVELS.MONTH,
-  ZOOM_LEVELS.QUARTER,
-  ZOOM_LEVELS.YEAR,
+  'MONTH',
+  'QUARTER',
+  'YEAR',
 ];
 
 export default function Timeline() {
@@ -119,7 +134,7 @@ export default function Timeline() {
    listView: {
     accessorKey:'listView',
      id: 'listView',
-     header: <span>List View</span>,
+     header: <span></span>,
      cell: (info) => {
        return <div>{info.getValue()}</div>;
      },
@@ -127,7 +142,7 @@ export default function Timeline() {
    calendarView: {
     accessorKey:'calendarView',
      id: 'calendarView',
-     header: <span>Calendar View</span>,
+     header: <span></span>,
      cell: (info) => {
        return <div>{info.getValue()}</div>;
      },
@@ -159,11 +174,15 @@ export default function Timeline() {
             return {
               id: item.utcDate,
               header: item.formattedDate,
-              size: ZOOM_LEVELS[zoomLevel].width,
+              // size: ZOOM_LEVELS[zoomLevel].width,
               cell: (props) => (
                 <div
                   className='cellBox'
-                  style={{ width: ZOOM_LEVELS[zoomLevel].width }}
+                  style={{
+                    width: !DAY_BASED.includes(zoomLevel)
+                      ? ZOOM_LEVELS[zoomLevel].width
+                      : getCellWidth(item.utcDate),
+                  }}
                 ></div>
               ),
             };
@@ -174,6 +193,19 @@ export default function Timeline() {
     },
     [dateBlocks, zoomLevel]
   );
+
+
+  function getCellWidth(utcDate){
+    switch(zoomLevel){
+      case 'MONTH':
+        return getDaysInMonth(utcDate) * PER_DAY_SIZE_MONTH;
+      case 'QUARTER':
+        console.log(getDaysInQuarter(utcDate),utcDate,"cellWidthQuarter");
+        return getDaysInQuarter(utcDate) * PER_DAY_SIZE_QUARTER;
+      default:
+        return null;
+    }
+  }
 
   const listColumns = useMemo(
     function constructListColumns() {
@@ -313,6 +345,34 @@ const generateDates = useCallback(function ongenerateDates(
   // console.log(dateBlocks);
 
 
+
+function getStartDate(){
+switch (zoomLevel) {
+  case 'HOUR':
+  case 'DAY':
+  case 'WEEK':
+    return ZOOM_LEVELS[zoomLevel].startDate.utc().startOf('day').toISOString();
+  case 'MONTH':
+    return ZOOM_LEVELS[zoomLevel].startDate.utc().startOf('month').toISOString();
+  case 'QUARTER':
+    return ZOOM_LEVELS[zoomLevel].startDate.utc().startOf('quarter').toISOString();
+  case 'YEAR':
+    return ZOOM_LEVELS[zoomLevel].startDate.utc().startOf('year').toISOString();
+  default:
+    throw new Error('Invalid time unit for adding time');
+}
+  }
+
+  // console.log(moment(getStartDate()).valueOf(),moment().valueOf(),"SDTA")
+
+  function convertTimeToDist(time) {
+    console.log(time, 'GLL');
+    return (
+      (time * ZOOM_LEVELS_CONVERSION[zoomLevel].timeUnit) /
+      ZOOM_LEVELS_CONVERSION[zoomLevel].Conv
+    );
+  }
+
   function addTime(date, mode, step) {
     const newDate = new Date(date);
     switch (mode) {
@@ -372,24 +432,19 @@ const generateDates = useCallback(function ongenerateDates(
           <div className='table-wrapper' ref={tableContainerRef}>
             <div
               className='table-data-wrapper'
-              style={{ height: `${(data.length * 60) + 80}px` }}
+              style={{ height: `${data.length * 60 + 80}px` }}
             >
-              <thead className='sticky-header' style={{height:'80px'}}>
+              <thead className='sticky-header' style={{ height: '80px' }}>
                 {table.getHeaderGroups().map((headerGroup, index) => {
                   if (headerGroup.depth === 0) return null;
 
                   return (
-                    <tr
-                      key={`${headerGroup.id} ${index} ${uuid()}`}
-                      
-                    >
+                    <tr key={`${headerGroup.id} ${index} ${uuid()}`}>
                       {headerGroup.headers.map((header, index) => {
                         if (index >= fieldLength || header.isPlaceholder)
                           return null;
                         return (
-                          <th
-                            key={`${header.id} ${index} ${uuid()}`}  
-                          >
+                          <th key={`${header.id} ${index} ${uuid()}`}>
                             {header.isPlaceholder
                               ? null
                               : flexRender(
@@ -403,7 +458,7 @@ const generateDates = useCallback(function ongenerateDates(
                   );
                 })}
               </thead>
-              <tbody style={{ height: `${(data.length) * 60}px` }}>
+              <tbody style={{ height: `${data.length * 60}px` }}>
                 {table.getRowModel().rows.map((row, index) => {
                   return (
                     <tr key={`${row.id} ${index} ${uuid()}`}>
@@ -431,8 +486,8 @@ const generateDates = useCallback(function ongenerateDates(
               </tbody>
             </div>
             <div
-              className='table-data-wrapper'
-              style={{ height: `${(data.length * 60) + 80}px` }}
+              className='table-data-wrapper right'
+              style={{ height: `${data.length * 60 + 80}px` }}
             >
               <thead className='sticky-header'>
                 {table.getHeaderGroups().map((headerGroup, index) => (
@@ -443,9 +498,9 @@ const generateDates = useCallback(function ongenerateDates(
                         <th
                           key={`${header.id} ${index} ${uuid()}`}
                           colSpan={header.colSpan}
-                          style={{
-                            width: `${header.column.getSize()}px`,
-                          }}
+                          // style={{
+                          //   width: `${header.column.getSize()}px`,
+                          // }}
                         >
                           {header.isPlaceholder
                             ? null
@@ -466,15 +521,26 @@ const generateDates = useCallback(function ongenerateDates(
                   position: 'relative',
                 }}
               >
+                <div
+                  id='current-time'
+                  style={{
+                    left: `${convertTimeToDist(moment().valueOf() - moment(getStartDate()).valueOf())}px`,
+                    width:'1px',
+                    position:'absolute',
+                    zIndex: 12,
+                    height: '100%',
+                    backgroundColor: 'red',
+                  }}
+                />
                 {table.getRowModel().rows.map((row, index) => {
-                  console.log(row,"ROZ")
+                  console.log(row, 'ROZ');
                   return (
                     <>
                       <TaskItem
                         data={row.original}
                         index={row.index}
                         zoomValue={zoomLevel}
-                        startDate={ZOOM_LEVELS[zoomLevel].startDate.utc().toISOString()}
+                        startDate={() => getStartDate()}
                       />
                       <tr
                         key={`${row.id} ${uuid()}`}
@@ -484,7 +550,9 @@ const generateDates = useCallback(function ongenerateDates(
                           if (index < fieldLength) return null;
                           console.log(index, 'Idx');
                           const columnId = cell.column.id;
-                          const isHoliday = holidays.includes(columnId);
+                          const isHoliday =
+                            holidays.includes(columnId) &&
+                            !NON_HOLIDAY_MODES.includes(zoomLevel);
                           return (
                             <td
                               key={`${cell.id} ${index} ${uuid()}`}

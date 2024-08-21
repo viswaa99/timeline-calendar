@@ -134,6 +134,9 @@ flex-basis: 50%;
   height: 100%;
 }
 
+.table-data-wrapper.right{
+}
+
 .sticky-header{
 position: sticky;
 top: 0;

@@ -3,6 +3,8 @@ import './taskitem.css';
 import moment from 'moment';
 import momenttz from 'moment-timezone';
 
+import { ZOOM_LEVELS_CONVERSION } from './util';
+
 const initialTasks = [
   { id: 1, name: 'Task 1', start: '2024-07-24', end: '2024-07-25' },
   {
@@ -14,54 +16,15 @@ const initialTasks = [
   { id: 3, name: 'Task 3', start: '2024-07-24', end: '2024-08-02' },
 ];
 
-const ZOOM_LEVELS = {
-  HOUR: {
-    id:"Hour",
-    timeUnit: 80,
-    Conv: (60 * 60 * 1000)*6,
-    widthUnit: 61 * 24 * 60 * 60 * 1000,
-  },
-  DAY: {
-    id:"Day",
-    timeUnit: 80,
-    Conv: 24 * 60 * 60 * 1000,
-    widthUnit: 183 * 24 * 60 * 60 * 1000,
-  },
-  WEEK: {
-    id:"Week",
-    timeUnit: 420,
-    Conv: 24 * 7 * 60 * 60 * 1000,
-    widthUnit: 500 * 24 * 60 * 60 * 1000,
-  },
-  MONTH: {
-    id:"Month",
-    timeUnit: 110,
-    Conv: 24 * 30 * 60 * 60 * 1000,
-    widthUnit: 548 * 24 * 60 * 60 * 1000,
-  },
-  QUARTER: {
-    id:"Quarter",
-    timeUnit: 87,
-    Conv: 3 * 24 * 30 * 60 * 60 * 1000,
-    widthUnit: 2555 * 24 * 60 * 60 * 1000,
-  },
-  YEAR: {
-    id:"Year",
-    timeUnit: 108,
-    Conv: 366 * 24 * 30 * 60 * 60 * 1000,
-    widthUnit: 7300 * 24 * 60 * 60 * 1000,
-  },
-};
-
 const hrConv = 60 * 60 * 1000;
 const dayConv = 24 * 60 * 60 * 1000;
 const timeUnit = 100;
 export default function TaskItem({data , index , startDate, zoomValue}) {
   console.log(data,"TaskData")
   const [task, setTask] = useState(data);
-  const [zoom, setZoom] = useState(ZOOM_LEVELS[zoomValue].id || 'Day');
+  const [zoom, setZoom] = useState(ZOOM_LEVELS_CONVERSION[zoomValue].id || 'Day');
 
-  // console.log(ZOOM_LEVELS[zoomValue],"ZMM");
+  // console.log(ZOOM_LEVELS_CONVERSION[zoomValue],"ZMM");
   // const [startDate, setSt] = useState('2024-06-20');
   const [endDate, setEt] = useState('2024-06-09');
   const currentTaskRef = useRef();
@@ -72,15 +35,15 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
 
   useEffect(
     function initDat() {
-      setZoom(ZOOM_LEVELS[zoomValue].id);
+      setZoom(ZOOM_LEVELS_CONVERSION[zoomValue].id);
     },[zoomValue])
 
   function convertTimeToDist(time) {
     console.log(time, 'GLL');
-    return (time * ZOOM_LEVELS[zoomValue].timeUnit) / ZOOM_LEVELS[zoomValue].Conv;
+    return (time * ZOOM_LEVELS_CONVERSION[zoomValue].timeUnit) / ZOOM_LEVELS_CONVERSION[zoomValue].Conv;
   }
   function convertDistToTime(dist) {
-    return (dist * ZOOM_LEVELS[zoomValue].Conv) / ZOOM_LEVELS[zoomValue].timeUnit;
+    return (dist * ZOOM_LEVELS_CONVERSION[zoomValue].Conv) / ZOOM_LEVELS_CONVERSION[zoomValue].timeUnit;
   }
 
   const handleChange = (event) => {
@@ -91,8 +54,8 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
 
   // function computeStartEnd() {
   //   const currentDate = new Date();
-  //   setSt(new Date(currentDate.getTime() - ZOOM_LEVELS[zoom].widthUnit));
-  //   setEt(new Date(currentDate.getTime() + ZOOM_LEVELS[zoom].widthUnit));
+  //   setSt(new Date(currentDate.getTime() - ZOOM_LEVELS_CONVERSION[zoom].widthUnit));
+  //   setEt(new Date(currentDate.getTime() + ZOOM_LEVELS_CONVERSION[zoom].widthUnit));
   // }
 
   // useEffect(
@@ -111,14 +74,22 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
      );   
     e.preventDefault();
     e.stopPropagation();
+    const element = e.target.parentElement;
     const startWidth = e.target.parentElement.offsetWidth;
     const taskStartDate = new Date(task.start);
     const taskEndDate = new Date(task.end);
+    const threshold = 50;
     const startX = e.clientX;
-    const startLeft = convertTimeToDist(taskStartDate - startDate);
+    const startLeft = convertTimeToDist(taskStartDate - startDate());
     currentTaskRef.current = task;
     const onMouseMove = (moveEvent) => {
       console.log(moveEvent.offsetX, 'MV');
+       const elementWidth = element.offsetWidth;
+       if (elementWidth > threshold) {
+         task.hideChild = false;
+       } else {
+         task.hideChild = true;
+       }
       if (direction === 'right') {
         // const newWidth = startWidth + (moveEvent.clientX - startX);
         const diff = moveEvent.clientX - startX;
@@ -200,13 +171,17 @@ export default function TaskItem({data , index , startDate, zoomValue}) {
       const [timestampEnd] = task.DueDate.split(' ');
       console.log(timestampStart,timestampEnd,"SE")
        const timeDiff =
-      convertTimeToDist(moment(timestampStart).utc().valueOf() - moment(startDate).utc().valueOf());
-      
+      convertTimeToDist(moment(timestampStart).utc().valueOf() - moment(startDate()).utc().valueOf());
+      // console.log(moment(timestampStart).utc().startOf('year'),"yearmilli");
+      console.log(
+        moment(timestampStart).utc().valueOf() -
+          moment(startDate()).utc().startOf('month').valueOf(), "millivals"
+      );
       const width = convertTimeToDist(
         moment(timestampEnd).utc().valueOf() -
           moment(timestampStart).utc().valueOf()
       );   
-      console.log(convertTimeToDist(timeDiff),timeDiff,"DIFFF");
+console.log(convertTimeToDist(timeDiff),timeDiff,"DIFFF");
 console.log(timeDiff,width,"Good")
       return (
         <div
@@ -218,7 +193,7 @@ console.log(timeDiff,width,"Good")
           }}
           onMouseDown={(e) => handleDragStart(e, task)}
         >
-          {task.Name}
+          {!task.hideChild ? task.Name : ""}
           <div
             className='gantt-task-resize-left'
             onMouseDown={(e) => handleMouseDown(e, task, 'left')}

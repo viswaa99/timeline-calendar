@@ -31,6 +31,7 @@
   margin-block: 6px;
   display: grid;
   place-items: center;
+  min-width: 10px;
 }
 
 .start-marker {
@@ -49,7 +50,7 @@
 
 .gantt-task-resize-left,
 .gantt-task-resize-right {
-  width: 10px;
+  width: 6px;
 
   height: 100%;
 
